@@ -1,0 +1,8 @@
+{
+  "require": {
+    "google/apiclient": "^3.3"
+  },
+  "autoload": {
+    "files": ["functions.php"]
+  }
+}
