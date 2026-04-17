@@ -1,59 +1,138 @@
 <?php
+/**
+ * callback.php - Handles OAuth callback
+ * 1. Validates state parameter (CSRF protection)
+ * 2. Exchanges authorization code for access token
+ * 3. Fetches user profile from Google API
+ * 4. Stores user in session
+ */
 
-require_once __DIR__ . '/functions.php';
+require_once 'config.php';
+session_start();
 
-startSecureSession();
-
-if (!empty($_GET['error'])) {
-    $error = cleanText($_GET['error']);
-    logError('OAuth error response: ' . $error);
-    header('Location: index.php?error=' . urlencode($error));
-    exit;
+// Check for errors from Google
+if (isset($_GET['error'])) {
+    die('OAuth Error: ' . htmlspecialchars($_GET['error_description'] ?? $_GET['error']));
 }
 
-$authCode = $_GET['code'] ?? '';
-$stateValue = $_GET['state'] ?? '';
-
-if ($authCode === '' || $stateValue === '') {
-    header('Location: index.php?error=Missing+authorization+code+or+state');
-    exit;
+// Check if authorization code is present
+if (!isset($_GET['code'])) {
+    die('No authorization code received.');
 }
 
-if (!validateOauthState($stateValue)) {
-    logError('Invalid OAuth state parameter. Possible CSRF attempt.');
-    header('Location: index.php?error=Invalid+state+parameter');
-    exit;
+// Validate state parameter to prevent CSRF attacks
+if (!isset($_SESSION['oauth_state']) || !isset($_GET['state'])) {
+    die('Invalid state parameter.');
 }
 
-try {
-    $client = buildGoogleClient();
-    $token = $client->fetchAccessTokenWithAuthCode($authCode);
+if ($_SESSION['oauth_state'] !== $_GET['state']) {
+    die('State mismatch - possible CSRF attack.');
+}
 
-    if (isset($token['error'])) {
-        throw new RuntimeException(sprintf('Token exchange failed: %s', $token['error_description'] ?? $token['error']));
-    }
+// Clear state from session after validation
+unset($_SESSION['oauth_state']);
 
-    $client->setAccessToken($token);
-    $oauth2Service = new Google\Service\Oauth2($client);
-    $profile = $oauth2Service->userinfo->get();
+// Step 1: Exchange authorization code for access token
+$tokenData = exchangeCodeForToken($_GET['code']);
 
-    $userData = [
-        'google_id' => cleanText($profile->getId()),
-        'name' => cleanText($profile->getName()),
-        'email' => cleanText($profile->getEmail()),
-        'picture' => filter_var($profile->getPicture(), FILTER_VALIDATE_URL) ? $profile->getPicture() : '',
-        'access_token' => $token['access_token'] ?? '',
-        'refresh_token' => $token['refresh_token'] ?? null,
-        'token_expiry' => isset($token['expires_in']) ? date('Y-m-d H:i:s', time() + (int) $token['expires_in']) : null,
+if (!$tokenData || !isset($tokenData['access_token'])) {
+    die('Failed to obtain access token.');
+}
+
+// Step 2: Fetch user profile using the access token
+$userData = fetchUserInfo($tokenData['access_token']);
+
+if (!$userData) {
+    die('Failed to fetch user information.');
+}
+
+// Step 3: Store user in session
+$_SESSION[USER_SESSION_KEY] = [
+    'id'      => $userData['id'] ?? '',
+    'name'    => $userData['name'] ?? '',
+    'email'   => $userData['email'] ?? '',
+    'picture' => $userData['picture'] ?? ''
+];
+
+// Redirect back to main page
+header('Location: index.php');
+exit;
+
+/**
+ * Exchange authorization code for access token
+ * Uses cURL to make POST request to Google's token endpoint
+ * 
+ * @param string $code The authorization code from Google
+ * @return array|false Token data on success, false on failure
+ */
+function exchangeCodeForToken($code) {
+    // Prepare POST data
+    $postData = [
+        'code'          => $code,
+        'client_id'     => GOOGLE_CLIENT_ID,
+        'client_secret' => GOOGLE_CLIENT_SECRET,
+        'redirect_uri'  => GOOGLE_REDIRECT_URI,
+        'grant_type'    => 'authorization_code'
     ];
 
-    saveOrUpdateUser(openDatabaseConnection(), $userData);
-    createLoginSession($userData);
+    // Initialize cURL
+    $ch = curl_init();
 
-    header('Location: index.php');
-    exit;
-} catch (Throwable $exception) {
-    logError($exception->getMessage());
-    header('Location: index.php?error=Unable+to+complete+Google+login');
-    exit;
+    // Set cURL options
+    curl_setopt($ch, CURLOPT_URL, GOOGLE_TOKEN_URL);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+
+    // Execute request
+    $response = curl_exec($ch);
+
+    // Check for cURL errors
+    if (curl_errno($ch)) {
+        error_log('cURL Error: ' . curl_error($ch));
+        curl_close($ch);
+        return false;
+    }
+
+    curl_close($ch);
+
+    // Parse JSON response
+    return json_decode($response, true);
+}
+
+/**
+ * Fetch user profile from Google API
+ * Uses the access token to get user information
+ * 
+ * @param string $accessToken The access token from Google
+ * @return array|false User data on success, false on failure
+ */
+function fetchUserInfo($accessToken) {
+    // Initialize cURL
+    $ch = curl_init();
+
+    // Set cURL options
+    curl_setopt($ch, CURLOPT_URL, GOOGLE_USERINFO_URL);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . $accessToken
+    ]);
+
+    // Execute request
+    $response = curl_exec($ch);
+
+    // Check for cURL errors
+    if (curl_errno($ch)) {
+        error_log('cURL Error: ' . curl_error($ch));
+        curl_close($ch);
+        return false;
+    }
+
+    curl_close($ch);
+
+    // Parse JSON response
+    return json_decode($response, true);
 }

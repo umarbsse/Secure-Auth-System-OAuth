@@ -2,75 +2,69 @@
 session_start();
 require_once 'config.php';
 
-// Validate state parameter (CSRF protection)
-if (!isset($_GET['state']) || $_GET['state'] !== ($_SESSION['oauth_state'] ?? '')) {
-    die('Invalid state parameter');
+// Make sure the state matches what we sent (security check)
+if (empty($_GET['state']) || $_GET['state'] !== ($_SESSION['oauth_state'] ?? '')) {
+    die('Something went wrong. Please try again.');
 }
 unset($_SESSION['oauth_state']);
 
-// Check if authorization code is present
-if (!isset($_GET['code'])) {
-    die('Authorization code not received');
+// Facebook should give us a code back
+if (empty($_GET['code'])) {
+    die('No authorization code received.');
 }
 
 $code = $_GET['code'];
 
-// Step 1: Exchange authorization code for access token
-$tokenData = exchangeCodeForToken($code);
+// Swap the code for an access token
+$token = getAccessToken($code);
 
-if (!isset($tokenData['access_token'])) {
-    die('Failed to obtain access token');
+if (empty($token['access_token'])) {
+    die('Could not get access token.');
 }
 
-$accessToken = $tokenData['access_token'];
+// Now get the user's info using that token
+$user = getUserInfo($token['access_token']);
 
-// Step 2: Fetch user data from Facebook Graph API
-$userData = fetchUserData($accessToken);
-
-if (!$userData || !isset($userData['id'])) {
-    die('Failed to fetch user data');
+if (empty($user['id'])) {
+    die('Could not get user info.');
 }
 
-// Store user data in session
+// Save user in session
 $_SESSION['fb_user'] = [
-    'id'    => $userData['id'],
-    'name'  => $userData['name'] ?? '',
-    'email' => $userData['email'] ?? null
+    'id'    => $user['id'],
+    'name'  => $user['name'] ?? '',
+    'email' => $user['email'] ?? ''
 ];
 
-// Redirect to index page
+// Go back to home page
 header('Location: index.php');
 exit;
 
-/**
- * Exchange authorization code for access token using cURL
- */
-function exchangeCodeForToken($code) {
+// --- Functions ---
+
+function getAccessToken($code) {
     $ch = curl_init();
     
-    curl_setopt($ch, CURLOPT_URL, FB_TOKEN_URL);
+    curl_setopt($ch, CURLOPT_URL, $GLOBALS['facebookTokenUrl']);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
-        'client_id'     => FB_APP_ID,
-        'client_secret' => FB_APP_SECRET,
-        'redirect_uri'  => FB_REDIRECT_URI,
+        'client_id'     => $GLOBALS['appId'],
+        'client_secret' => $GLOBALS['appSecret'],
+        'redirect_uri'  => $GLOBALS['redirectUri'],
         'code'          => $code
     ]));
     
     $response = curl_exec($ch);
     curl_close($ch);
     
-    return json_decode($response, true);
+    return json_decode($response, true) ?: [];
 }
 
-/**
- * Fetch user data from Facebook Graph API using cURL
- */
-function fetchUserData($accessToken) {
+function getUserInfo($accessToken) {
     $ch = curl_init();
     
-    $url = FB_GRAPH_URL . '?' . http_build_query([
+    $url = $GLOBALS['facebookGraphUrl'] . '?' . http_build_query([
         'fields'       => 'id,name,email',
         'access_token' => $accessToken
     ]);
@@ -81,5 +75,5 @@ function fetchUserData($accessToken) {
     $response = curl_exec($ch);
     curl_close($ch);
     
-    return json_decode($response, true);
+    return json_decode($response, true) ?: [];
 }

@@ -3,71 +3,95 @@ session_start();
 require_once 'config.php';
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Facebook OAuth Login</title>
+    <title>Login with Facebook</title>
     <style>
+        * { box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #f0f2f5;
             margin: 0;
-            background-color: #f0f2f5;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .container {
-            background: white;
-            padding: 2rem;
+        .login-box {
+            background: #fff;
+            padding: 40px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             text-align: center;
+            max-width: 400px;
+            width: 100%;
         }
-        h1 { color: #1877f2; margin-bottom: 1.5rem; }
-        .user-info {
+        h1 {
+            color: #1877f2;
+            margin: 0 0 30px 0;
+            font-size: 24px;
+        }
+        .user-details {
+            background: #f7f8fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
             text-align: left;
-            margin: 1rem 0;
-            padding: 1rem;
-            background: #e7f3ff;
-            border-radius: 8px;
         }
-        .user-info p { margin: 0.5rem 0; }
-        .btn-facebook {
+        .user-details p {
+            margin: 10px 0;
+            color: #333;
+        }
+        .user-details strong {
+            color: #666;
+            display: block;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        .fb-btn {
             display: inline-block;
             background: #1877f2;
-            color: white;
+            color: #fff;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: background 0.2s;
+        }
+        .fb-btn:hover {
+            background: #166fe5;
+        }
+        .logout-btn {
+            display: inline-block;
+            background: #606770;
+            color: #fff;
             padding: 12px 24px;
             text-decoration: none;
             border-radius: 6px;
-            font-weight: bold;
+            font-size: 14px;
         }
-        .btn-facebook:hover { background: #166fe5; }
-        .btn-logout {
-            display: inline-block;
-            background: #dc3545;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 6px;
-            margin-top: 1rem;
+        .logout-btn:hover {
+            background: #4b4f56;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Facebook OAuth Login</h1>
+    <div class="login-box">
+        <h1>Facebook Login</h1>
         
         <?php if (isset($_SESSION['fb_user'])): ?>
-            <div class="user-info">
-                <p><strong>ID:</strong> <?php echo htmlspecialchars($_SESSION['fb_user']['id']); ?></p>
-                <p><strong>Name:</strong> <?php echo htmlspecialchars($_SESSION['fb_user']['name']); ?></p>
-                <p><strong>Email:</strong> <?php echo htmlspecialchars($_SESSION['fb_user']['email'] ?? 'Not available'); ?></p>
+            <div class="user-details">
+                <p><strong>User ID</strong><?php echo htmlspecialchars($_SESSION['fb_user']['id']); ?></p>
+                <p><strong>Name</strong><?php echo htmlspecialchars($_SESSION['fb_user']['name']); ?></p>
+                <p><strong>Email</strong><?php echo htmlspecialchars($_SESSION['fb_user']['email'] ?? 'Not provided'); ?></p>
             </div>
-            <a href="logout.php" class="btn-logout">Logout</a>
+            <a href="logout.php" class="logout-btn">Log Out</a>
         <?php else: ?>
-            <a href="login.php" class="btn-facebook">Login with Facebook</a>
+            <a href="login.php" class="fb-btn">Continue with Facebook</a>
         <?php endif; ?>
     </div>
 </body>

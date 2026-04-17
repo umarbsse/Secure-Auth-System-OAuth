@@ -1,51 +1,80 @@
 <?php
+/**
+ * index.php - Main landing page
+ * Displays login button or user info if already logged in
+ */
 
-require_once __DIR__ . '/functions.php';
+require_once 'config.php';
+session_start();
 
-startSecureSession();
-$loggedIn = isLoggedIn();
-$currentUser = $loggedIn ? getCurrentUser() : [];
-$errorMessage = '';
-
-if (!empty($_GET['error'])) {
-    $errorMessage = cleanText($_GET['error']);
-}
-?><!DOCTYPE html>
+// Check if user is already logged in
+$user = isset($_SESSION[USER_SESSION_KEY]) ? $_SESSION[USER_SESSION_KEY] : null;
+?>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google Login</title>
+    <title>Google OAuth Login</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #f5f7fb; color: #333; margin: 0; padding: 0; }
-        .page { max-width: 520px; margin: 4rem auto; padding: 2rem; background: #fff; border-radius: 12px; box-shadow: 0 20px 40px rgba(60, 72, 88, 0.12); }
-        .button { display: inline-flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1.4rem; color: #fff; background: #4285f4; border-radius: 8px; text-decoration: none; font-weight: 600; }
-        .button img { width: 20px; }
-        .profile { text-align: center; }
-        .profile img { border-radius: 999px; width: 96px; height: 96px; object-fit: cover; }
-        .profile .name { margin: 1rem 0 0.25rem; font-size: 1.3rem; }
-        .profile .email { color: #555; }
-        .notice { margin-bottom: 1rem; color: #b00020; }
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .login-btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #4285f4;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .login-btn:hover {
+            background-color: #357ae8;
+        }
+        .user-info {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: left;
+        }
+        .user-info img {
+            border-radius: 50%;
+            margin-right: 15px;
+        }
+        .logout-btn {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 8px 16px;
+            background-color: #dc3545;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
-<div class="page">
-    <?php if ($loggedIn && $currentUser): ?>
-        <div class="profile">
-            <img src="<?= htmlspecialchars($currentUser['picture'], ENT_QUOTES, 'UTF-8') ?>" alt="Profile picture">
-            <div class="name"><?= htmlspecialchars($currentUser['name'], ENT_QUOTES, 'UTF-8') ?></div>
-            <div class="email"><?= htmlspecialchars($currentUser['email'], ENT_QUOTES, 'UTF-8') ?></div>
+    <h1>Google OAuth 2.0 Login</h1>
+    
+    <?php if ($user): ?>
+        <!-- User is logged in - show profile -->
+        <div class="user-info">
+            <h2>Welcome, <?php echo htmlspecialchars($user['name']); ?>!</h2>
+            <p><strong>Email:</strong> <?php echo htmlspecialchars($user['email']); ?></p>
+            <p><strong>Google ID:</strong> <?php echo htmlspecialchars($user['id']); ?></p>
+            <?php if (!empty($user['picture'])): ?>
+                <img src="<?php echo htmlspecialchars($user['picture']); ?>" alt="Profile Picture" width="100" height="100">
+            <?php endif; ?>
         </div>
-        <p style="text-align:center; margin: 1.5rem 0;">You are signed in with Google.</p>
-        <p style="text-align:center;"><a class="button" href="logout.php">Logout</a></p>
+        <a href="logout.php" class="logout-btn">Logout</a>
     <?php else: ?>
-        <h1>Login with Google</h1>
-        <?php if ($errorMessage): ?>
-            <div class="notice">Error: <?= htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8') ?></div>
-        <?php endif; ?>
-        <p>Click below to sign in with Google and allow this app to read your profile.</p>
-        <p><a class="button" href="google-login.php"><img src="https://www.gstatic.com/devrel-devsite/v0/b/google-devrel-prod.appspot.com/o/images%2Fsquare-google.svg?alt=media" alt="Google">Login with Google</a></p>
+        <!-- User is not logged in - show login button -->
+        <p>Click below to sign in with your Google account</p>
+        <a href="login.php" class="login-btn">Login with Google</a>
     <?php endif; ?>
-</div>
 </body>
 </html>

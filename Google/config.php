@@ -1,79 +1,25 @@
 <?php
-
 /**
- * Load environment variables from the project .env file.
- * Keep this file out of version control for security.
+ * Configuration file for Google OAuth 2.0
+ * 
+ * Replace the values below with your actual Google OAuth credentials
+ * Get them from: https://console.cloud.google.com/apis/credentials
  */
-function loadEnvFromFile(string $path = __DIR__ . '/.env'): void
-{
-    if (!file_exists($path)) {
-        return;
-    }
 
-    $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+// Your Google OAuth credentials
+define('GOOGLE_CLIENT_ID', 'YOUR_CLIENT_ID.apps.googleusercontent.com');
+define('GOOGLE_CLIENT_SECRET', 'YOUR_CLIENT_SECRET');
 
-    foreach ($lines as $line) {
-        $line = trim($line);
+// Your redirect URI (must match exactly in Google Console)
+define('GOOGLE_REDIRECT_URI', 'http://localhost:8000/callback.php');
 
-        if ($line === '' || str_starts_with($line, '#')) {
-            continue;
-        }
+// OAuth endpoints
+define('GOOGLE_AUTH_URL', 'https://accounts.google.com/o/oauth2/v2/auth');
+define('GOOGLE_TOKEN_URL', 'https://oauth2.googleapis.com/token');
+define('GOOGLE_USERINFO_URL', 'https://www.googleapis.com/oauth2/v2/userinfo');
 
-        [$name, $value] = array_map('trim', explode('=', $line, 2) + [1 => '']);
+// Scopes (what data we want to access)
+define('GOOGLE_SCOPES', 'openid email profile');
 
-        if ($name === '' || array_key_exists($name, $_ENV)) {
-            continue;
-        }
-
-        $_ENV[$name] = $value;
-        putenv("{$name}={$value}");
-    }
-}
-
-loadEnvFromFile();
-
-/**
- * Get an environment value or fallback.
- */
-function envValue(string $name, ?string $default = null): ?string
-{
-    $value = getenv($name);
-
-    if ($value === false) {
-        return $_ENV[$name] ?? $default;
-    }
-
-    return $value;
-}
-
-// Google OAuth configuration keys
-const GOOGLE_CLIENT_ID = 'GOOGLE_CLIENT_ID';
-const GOOGLE_CLIENT_SECRET = 'GOOGLE_CLIENT_SECRET';
-const GOOGLE_REDIRECT_URI = 'GOOGLE_REDIRECT_URI';
-
-// Database configuration keys
-const DB_HOST = 'DB_HOST';
-const DB_NAME = 'DB_NAME';
-const DB_USER = 'DB_USER';
-const DB_PASS = 'DB_PASS';
-
-// Session configuration
-const SESSION_NAME = 'google_oauth_session';
-const SESSION_LIFETIME = 3600;
-const SESSION_SECURE = false; // Set to true in production when HTTPS is enabled
-const SESSION_HTTP_ONLY = true;
-const SESSION_SAME_SITE = 'Lax';
-
-/**
- * Get a required configuration value and fail early when missing.
- */
-function getRequiredConfig(string $name, ?string $fallback = null): string
-{
-    $value = envValue($name, $fallback);
-
-    if ($value === null || trim($value) === '') {
-        throw new RuntimeException("Missing required configuration: {$name}");
-    }
-
-    return trim($value);
-}
+// Session key for storing user data
+define('USER_SESSION_KEY', 'user');

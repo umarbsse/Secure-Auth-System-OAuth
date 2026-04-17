@@ -1,12 +1,10 @@
 <?php
 session_start();
 
-// Unset Facebook user data from session
+// Clear the user session
 unset($_SESSION['fb_user']);
-
-// Destroy the session
 session_destroy();
 
-// Redirect to index page
+// Send them back to the login page
 header('Location: index.php');
 exit;

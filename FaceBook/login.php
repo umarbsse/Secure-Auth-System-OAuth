@@ -2,21 +2,21 @@
 session_start();
 require_once 'config.php';
 
-// Generate CSRF state parameter
+// Create a random string to protect against CSRF attacks
 $state = bin2hex(random_bytes(16));
 $_SESSION['oauth_state'] = $state;
 
-// Build Facebook OAuth URL
+// Put together the Facebook login URL
 $params = [
-    'client_id'    => FB_APP_ID,
-    'redirect_uri' => FB_REDIRECT_URI,
+    'client_id'    => $appId,
+    'redirect_uri' => $redirectUri,
     'state'        => $state,
-    'scope'        => FB_SCOPE,
+    'scope'        => $permissions,
     'response_type' => 'code'
 ];
 
-$authUrl = FB_AUTH_URL . '?' . http_build_query($params);
+$loginUrl = $facebookAuthUrl . '?' . http_build_query($params);
 
-// Redirect to Facebook login
-header('Location: ' . $authUrl);
+// Send user to Facebook
+header('Location: ' . $loginUrl);
 exit;
